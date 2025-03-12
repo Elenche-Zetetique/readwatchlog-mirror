@@ -1,0 +1,11 @@
+colorlog==6.9.0
+google-api-core==2.24.1
+google-api-python-client==2.162.0
+google-auth-httplib2==0.2.0
+google-auth==2.38.0
+googleapis-common-protos==1.68.0
+openpyxl==3.1.5
+pyexcel-ods3==0.6.1
+python-dotenv==1.0.1
+python-magic==0.4.16
+tqdm==4.67.1
