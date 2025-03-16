@@ -359,24 +359,6 @@ class BaseProcessor(ABC):
 
 		return link_info
 
-	def _validate_end_range(self) -> bool:
-		"""
-		Validates that `self._END` is a positive integer greater than `self._START`.
-
-		Checks if the instance variable `self._END` is properly set as an integer and exceeds
-		`self._START` to ensure a valid range for processing.
-
-		Returns:
-			bool: True if `self._END` is a positive integer and greater than `self._START`, False otherwise.
-
-		Raises:
-			AttributeError: If `self._START` or `self._END` is not defined.
-
-		Notes:
-			- Both `self._START` and `self._END` are assumed to be instance variables set elsewhere in the class.
-		"""
-		return isinstance(self._END, int) and self._END > self._START
-
 	def _wb_handler(self, func: Callable[..., Any]) -> Callable[..., Any]:
 			"""
 			A decorator that manages a workbook operations for the wrapped function using a context manager.
@@ -445,18 +427,23 @@ class BaseProcessor(ABC):
 	@property
 	def json(self) -> dict:
 		"""
-		Gets the result of ordering tags in the worksheet with output and error handling.
+		Converts worksheet data to a JSON-compatible dictionary with output and error handling.
 
-		Executes the tag-ordering process within a managed output, applying workbook handling
-		and exception logging. The underlying operation sorts tag values across specified
-		columns in the worksheet.
+		Executes the conversion process within a managed output context, using workbook handling
+		and exception logging. The underlying operation transforms worksheet rows into a nested
+		dictionary structure.
 
 		Returns:
-			None: If the operation completes with no meaningful return value or on error.
+			dict: A dictionary of worksheet data, or an empty dict if an error occurs.
+
+		Raises:
+			AttributeError: If required instance variables (e.g., `_OUTPUT`, `_CUSTOM_NAME`) are unset.
+			RuntimeError: If output creation or conversion fails due to utility errors.
 
 		Notes:
-			- Relies on Utilities methods for output creation and exception handling.
-			- Uses the custom name and output ID from instance variables if provided.
+			- Relies on `_utilities.create_output` for output management and `_utilities.exception_handler` for error logging.
+			- Applies `_wb_handler` for workbook-specific enhancements.
+			- Uses instance variables `_OUTPUT` and `_CUSTOM_NAME` for configuration.
 		"""
 		return	self._utilities.exception_handler(
 					self._utilities.create_output(
@@ -469,25 +456,22 @@ class BaseProcessor(ABC):
 	@property
 	def links(self) -> dict | None:
 		"""
-		Retrieves links using a decorated workbook handler with output and error management.
+		Retrieves links from the worksheet with output and error handling.
 
-		This property wraps the `_get_links` method with `_wb_handler`, creates a output
-		using `_utilities.create_output` with the decorated links and output parameters, and manages
-		exceptions via `_utilities.exception_handler` with error logging.
+		Wraps the `_get_links` method with workbook handling, output creation, and exception
+		management. Processes links and returns the result, if successful.
 
 		Returns:
-			Any: The result of the link retrieval routine, potentially modified by output management
-				and exception handling.
+			dict | None: Dictionary of processed links and their attributes, or None if an error occurs.
 
 		Raises:
-			AttributeError: If required instance variables (e.g., custom name or output ID) are not set.
-			RuntimeError: If output creation or link retrieval fails due to underlying utility errors.
+			AttributeError: If required instance variables (e.g., `_OUTPUT`, `_CUSTOM_NAME`) are unset.
+			RuntimeError: If output creation or link retrieval fails due to utility errors.
 
 		Notes:
-			- Relies on `_utilities.create_output` for output management and `_utilities.exception_handler`
-			for error handling.
-			- Uses instance variables for custom name and output ID if provided, falling back to defaults otherwise.
-			- Decorated with `_wb_handler` to enhance workbook-related functionality.
+			- Uses `_utilities.create_output` for output management and `_utilities.exception_handler` for error logging.
+			- Applies `_wb_handler` for workbook-specific enhancements.
+			- Relies on instance variables `_OUTPUT` and `_CUSTOM_NAME` for configuration.
 		"""
 		return	self._utilities.exception_handler(
 					self._utilities.create_output(
@@ -500,18 +484,18 @@ class BaseProcessor(ABC):
 	@property
 	def tags(self) -> None:
 		"""
-		Gets the result of ordering tags in the worksheet with output and error handling.
+		Processes and sorts tags in the worksheet with output and error handling.
 
-		Executes the tag-ordering process within a managed output, applying workbook handling
-		and exception logging. The underlying operation sorts tag values across specified
-		columns in the worksheet.
+		Executes the tag-ordering operation within a managed output context, leveraging workbook
+		handling and exception logging. The process sorts tag values across specified columns
+		in the worksheet.
 
 		Returns:
-			None: If the operation completes with no meaningful return value or on error.
+			None: Operation completes with no return value or on error.
 
 		Notes:
-			- Relies on Utilities methods for output creation and exception handling.
-			- Uses the custom name and output ID from instance variables if provided.
+			- Depends on `Utilities` for output creation and exception handling.
+			- Uses instance variables `_OUTPUT` and `_CUSTOM_NAME` for output configuration.
 		"""
 		return	self._utilities.exception_handler(
 					self._utilities.create_output(

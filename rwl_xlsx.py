@@ -51,9 +51,6 @@ class XlsxProcessor(BaseProcessor):
 
 		_process_yt_link(link: str, row: int) -> dict
 			Processes a YouTube link to extract video details and duration.
-
-		_validate_end_range() -> bool
-			Validates that `self._END` is a positive integer greater than `self._START`.
 	"""
 	__slots__ = ("_ws")
 
@@ -167,12 +164,17 @@ class XlsxProcessor(BaseProcessor):
 		"""
 		Converts the active worksheet into a JSON-compatible dictionary.
 
-		The first row is treated as column headers. The second column is used as unique keys 
-		for the dictionary, with the remaining columns as nested key-value pairs.
+		Uses the first row as column headers and the second column as unique keys. Each row’s
+		remaining columns are mapped to nested key-value pairs. Dates in the 'Date' column,
+		if present, are formatted as strings.
 
 		Returns:
-			dict: A dictionary where the keys are values from the second column, 
-				and the values are dictionaries of the remaining row data.
+			dict: A dictionary where keys are second-column values and values are dictionaries of row data.
+		
+		Notes:
+			- Assumes `_ws` is the worksheet object and the first row contains headers.
+			- Removes the second column’s value from nested dictionaries.
+			- Requires `datetime` for date formatting if 'Date' column exists.
 		"""
 		columns = []
 		row, column = 1, 1
@@ -222,13 +224,23 @@ class XlsxProcessor(BaseProcessor):
 
 	def _get_links(self) -> dict:
 		"""
-		Extracts YouTube links from an Excel worksheet and processes them to store video durations.
+		Extracts and processes YouTube links from the worksheet, storing video durations.
+
+		Iterates over rows in the specified range, identifies valid YouTube links, processes them,
+		and updates the worksheet with extracted attributes (e.g., duration). Returns a dictionary
+		of links and their metadata.
 
 		Returns:
-			dict: Processed links and their attributes
+			dict: Mapping of YouTube links to their processed attributes.
 
 		Raises:
-			ValueError: If range is invalid (END <= START)
+			ValueError: If the range is invalid (e.g., `_END` <= `_START`) or `_START` is undefined with `_CHUNK`.
+
+		Notes:
+			- Uses `_START` and `_END` for row range, adjusted by `_CHUNK` or autosearch (`_AUTOSEARCH`).
+			- Assumes `_ws` is the worksheet object and `_YT_PREFIX` defines valid YouTube link prefixes.
+			- Caches column indices in `attr_columns` for efficiency.
+			- Requires `tqdm` for progress tracking and private methods (`__find_starting_row`, `__get_last_row_number`, etc.).
 		"""
 		links: Dict[str, Dict[str, Any]] = {}
 		LINK_COLUMN: int = 2  # Constant for link column index
@@ -243,12 +255,6 @@ class XlsxProcessor(BaseProcessor):
 			if self._START is None:
 				raise ValueError("Value not found: --start is not defined")
 			self._END = self._START + self._CHUNK
-
-		
-
-		# Validate range once
-		if not self._validate_end_range():
-			raise ValueError("Invalid range: END must be greater than START")
 
 		# Pre-calculate column numbers to avoid repeated calls
 		attr_columns: Dict[str, int] = {}
@@ -359,7 +365,7 @@ class XlsxProcessor(BaseProcessor):
 			- Placeholder values ('.') are ignored during sorting and not rewritten.
 		"""
 		tags: List[int] = self._get_tags()
-		row: int = self._START
+		row = 2
 
 		while self._ws.cell(row=row, column=tags[0]).value:
 
@@ -402,15 +408,6 @@ class XlsxProcessor(BaseProcessor):
 			`self._OUTPUT` is True.
 			- The workbook is only saved if it was successfully loaded.
 		"""
-		if not self._FILE:
-			raise TypeError("self._FILE must exist.")
-		if not isinstance(self._FILE, str):
-			raise TypeError("self._FILE must be a string.")
-		if not self._SHEETNAME:
-			raise TypeError("self._SHEETNAME must exist.")
-		if not isinstance(self._SHEETNAME, str):
-			raise TypeError("self._SHEETNAME must be a string.")
-
 		wb: Optional[Workbook] = None
 		try:
 			wb = load_workbook(filename=self._FILE)

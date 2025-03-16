@@ -8,7 +8,7 @@ from rwl_base import BaseProcessor
 from tqdm import tqdm
 from typing import Any, Dict, Generator, List, Optional
 from utilities import Utilities
-import pyexcel_ods3
+from pyexcel_ods3 import get_data, save_data
 
 class OdsProcessor(BaseProcessor):
 	"""
@@ -96,7 +96,27 @@ class OdsProcessor(BaseProcessor):
 			to indices.
 			- A '.' value indicates a placeholder or missing data in the respective field.
 		"""
-		pass
+		cols = {
+			'Duration': self.__get_col_number('Duration'),
+			'Published': self.__get_col_number('Published'),
+			'Author': self.__get_col_number('Author'),
+			'Exist': self.__get_col_number('Exist')
+		}
+
+		# Ensure valid column indices
+		if any(col == -1 for col in cols.values()):
+			return False
+
+		# Early exit if 'Exist' is not a placeholder
+		if row >= len(self._ws) or cols['Exist'] >= len(self._ws[row]) or self._ws[row][cols['Exist']] != '.':
+			return False
+
+		# Check key fields for placeholders
+		return any(
+			cols[field] < len(self._ws[row]) and self._ws[row][cols[field]] == '.'
+			for field in ('Duration', 'Published', 'Author')
+		)
+
 
 	def __get_col_number(self, col_name: str) -> int | None:
 		"""
@@ -111,7 +131,12 @@ class OdsProcessor(BaseProcessor):
 		Returns:
 			int: 1-based column number if the name is found, None otherwise.
 		"""
-		pass
+		row = 0
+		column = 1
+		for value in self._ws[row]:
+			
+			if value == col_name: return column
+			column += 1
 
 	def _convert_to_json(self) -> Dict[str, Dict[str, Any]]:
 		"""
@@ -137,7 +162,13 @@ class OdsProcessor(BaseProcessor):
 		Returns:
 			int: The row index of the first valid YouTube link.
 		"""
-		pass
+		column = 1  # ODS columns are 0-based
+		row = 1  # ODS rows are 0-based
+
+		while row < len(self._ws) and (link := self._ws[row][column] if column < len(self._ws[row]) else None):
+			if isinstance(link, str) and yt_prefix in link and self._check_record(row=row):
+				return row
+			row += 1
 
 	def _get_links(self) -> dict:
 		"""
@@ -149,7 +180,49 @@ class OdsProcessor(BaseProcessor):
 		Raises:
 			ValueError: If range is invalid (END <= START)
 		"""
-		pass
+		if self._AUTOSEARCH:
+			self._START = self.__find_starting_row()
+			self._END = self.__get_last_row_number()
+			self._utilities.logger.info(f"Starting row: {self._START}")
+
+		if self._CHUNK:
+			if self._START is None:
+				raise ValueError("Value not found: --start is not defined")
+			self._END = self._START + self._CHUNK
+
+		links = {}
+		attr_columns = {}
+		LINK_COLUMN = 1  # ODS columns are 0-based
+
+		for row in tqdm(range(self._START, self._END), desc="Processing YouTube links"):
+			row_data = self._ws[row] if row < len(self._ws) else []
+			link = row_data[LINK_COLUMN] if LINK_COLUMN < len(row_data) else None
+			
+			if not (isinstance(link, str) and self._YT_PREFIX in link) or not self.__check_record(row):
+				continue
+
+			link_info = self._process_yt_link(link=link, row=row)
+			if not link_info or link not in link_info:
+				continue
+
+			for attribute, value in link_info[link].items():
+				if not value:
+					continue
+				
+				col = attr_columns.setdefault(attribute, self.__get_col_number(attribute))
+				if col == -1:
+					continue
+				
+				while len(self._ws) <= row:
+					self._ws.append([])
+				while len(self._ws[row]) <= col:
+					self._ws[row].append(None)
+				
+				if self._ws[row][col] == '.':
+					self._ws[row][col] = value
+			
+			links.update(link_info)
+		return links
 
 	def _get_routines(self) -> Dict[str, Dict[str, float]]:
 		"""
@@ -235,27 +308,17 @@ class OdsProcessor(BaseProcessor):
 			- The workbook is only saved if it was successfully loaded.
 			- With pyexcel_ods3, the workbook is a dict, and sheets are accessed as keys.
 		"""
-		if not self._FILE:
-			raise TypeError("self._FILE must exist.")
-		if not isinstance(self._FILE, str):
-			raise TypeError("self._FILE must be a string.")
-		if not self._SHEETNAME:
-			raise TypeError("self._SHEETNAME must exist.")
-		if not isinstance(self._SHEETNAME, str):
-			raise TypeError("self._SHEETNAME must be a string.")
-
-		wb: Optional[dict] = None
 		try:
 			# Load the ODS file into a dictionary
 			wb = get_data(self._FILE)
-			if self._SHEETNAME not in wb:
+			self._ws = wb.get(self._SHEETNAME, [])
+			if not self._ws:
 				raise KeyError(f"Sheet '{self._SHEETNAME}' not found in the workbook.")
-			self._ws = wb[self._SHEETNAME]  # Assign the selected sheet data
 			yield wb  # Yield control to the wrapped function
 		finally:
 			if wb is not None:  # Ensure wb exists before trying to save
 				if self._OUTPUT:
 					filename = f"{self._utilities.generate_output_name(self._CUSTOM_NAME)}.ods"
-					save_data(filename, wb)
+					save_data(filename, {self._SHEETNAME: self._ws})
 				else:
-					save_data(self._FILE, wb)
+					save_data(self._FILE, {self._SHEETNAME: self._ws})

@@ -36,8 +36,7 @@ class Utilities:
 
 		self.__TIMESTAMP_FORMAT = '%m%d%Y_%H%M%S_%f'  # Class-level constant
 		self.__directories = {
-								'outputs':	'outputs', 
-								'results':	'results', 
+								'outputs':	'outputs',
 								'logs':		'logs'
 							}
 		(os.makedirs(d, exist_ok=True) for d in self.__directories.values())
