@@ -6,17 +6,24 @@ Read-Watch-Log is a tool designed to process specially crafted XLSX/ODS files. I
 - Supports **XLSX** and **ODS** file formats.
 - Extracts and processes data from spreadsheets.
 - Provides multiple processing options, including:
-    - Extracting links
+    - Extracting YouTube links from a 
+      worksheet and processing them.
     - Detecting duplicates
     - Converting data to JSON
     - Ordering tags
+    - Fetching routines from a worksheet and 
+      organizing them by days and categories.
 - Supports chunked processing for large datasets.
 - Allows automatic searching for non-processed records.
+## Prerequisites
+The program performs operations on a file with this structure:
+![Records file](images/records_file.png)
+
 ## Installation
 1. Clone the repository:
 ```shell
 git clone <repository_url>
-cd read-watch-log
+cd readwatchlog
 ```
 
 2. Install the required dependencies:
