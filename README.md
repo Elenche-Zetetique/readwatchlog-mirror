@@ -80,3 +80,6 @@ This project is licensed under the [**Creative Commons Attribution-NonCommercial
 - You are **free to use, modify, and share** this software **for non-commercial purposes**.
 - **Commercial use is strictly prohibited**.
 - No warranties or liability: The author is **not responsible** for any issues arising from use.
+
+## Authors
+Maintained by **Elenche Zetetique**.
