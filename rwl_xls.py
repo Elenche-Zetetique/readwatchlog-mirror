@@ -12,7 +12,7 @@ from typing import Any, Dict, Generator, List, Optional
 from utilities import Utilities
 import copy
 
-class OdsProcessor(BaseProcessor):
+class XlsProcessor(BaseProcessor):
 	"""
 	A class to perform actions on a specially crafted ODS (OpenDocument Spreadsheet) file.
 
@@ -57,28 +57,22 @@ class OdsProcessor(BaseProcessor):
 		_validate_end_range() -> bool
 			Validates that `self._END` is a positive integer greater than `self._START`.
 	"""
-	__slots__ = ("__xlsx_processor", "_args")
+	__slots__ = ("_ws", "_ws_temp", "__xlsx_processor", "_args")
 
 	def __init__(self):
-		"""Initializes the class and sets up an XlsxProcessor instance.
-
-		Creates an instance __xlsx_processor of `XlsxProcessor` used for 
-		processing XLSX files, passing the arguments stored in 
-		`self._args` to handle XLSX file operations.
-		"""
 		self.__xlsx_processor = XlsxProcessor(args=self._args)
 
 	def _check_for_duplicates(self) -> Dict[str, List[int]]:
 		"""
-		Checks for duplicate links in an ODS file and returns their indices.
+		Checks for duplicate links in an XLSX file and returns their indices.
 
-		Calls the '_check_for_duplicates' from the XlsxProcessor instance. The method retrieves 
-		link values from the worksheet, identifies duplicates, and maps each duplicate link 
-		to a list of its zero-based indices in the original sequence.
+		Scans the worksheet starting at row 2, column 2, collecting all link values until an
+		empty cell is encountered. Identifies duplicates and maps each duplicate link to a
+		list of its zero-based indices in the original sequence.
 
 		Returns:
 			dict: Mapping of duplicate links to their indices, e.g., 
-				{'link1': [0, 3], 'link2': [1, 5]}. Empty dict if no duplicates are found.
+				{'link1': [0, 3], 'link2': [1, 5]}. Empty dict if no duplicates found.
 		"""
 		return self.__xlsx_processor._check_for_duplicates()
 
@@ -86,7 +80,6 @@ class OdsProcessor(BaseProcessor):
 		"""
 		Converts the active worksheet into a JSON-compatible dictionary.
 
-		Calls the '_convert_to_json' from the XlsxProcessor instance. 
 		The first row is treated as column headers. The second column is used as unique keys 
 		for the dictionary, with the remaining columns as nested key-value pairs.
 
@@ -98,18 +91,13 @@ class OdsProcessor(BaseProcessor):
 
 	def _get_links(self) -> dict:
 		"""
-		Extracts and processes YouTube links from the worksheet, storing video durations.
-
-		Calls the '_get_links' from the XlsxProcessor instance. 
-		Iterates over rows in the specified range, identifies valid YouTube links, processes them,
-		and updates the worksheet with extracted attributes (e.g., duration). Returns a dictionary
-		of links and their metadata.
+		Extracts YouTube links from an Excel worksheet and processes them to store video durations.
 
 		Returns:
-			dict: Mapping of YouTube links to their processed attributes.
+			dict: Processed links and their attributes
 
 		Raises:
-			ValueError: If the range is invalid (e.g., `_END` <= `_START`) or `_START` is undefined with `_CHUNK`.
+			ValueError: If range is invalid (END <= START)
 		"""
 		return self.__xlsx_processor._get_links()
 
@@ -117,7 +105,6 @@ class OdsProcessor(BaseProcessor):
 		"""
 		Fetches daily routines from a worksheet as a JSON-structured dictionary.
 
-		Calls the '_get_routines' from the XlsxProcessor instance. 
 		Extracts routine data starting from a predefined row (`self._START`), using column numbers
 		for 'Date' and 'Duration'. For each row with a valid duration (not '.'), computes a rounded
 		value, assigns a color based on cell fill, and aggregates totals by date and color.
@@ -140,7 +127,6 @@ class OdsProcessor(BaseProcessor):
 		"""
 		Extracts column numbers of cells containing 'Tag' in the first row.
 
-		Calls the '_get_tags' from the XlsxProcessor instance. 
 		Scans row 1 of the worksheet, collecting 1-based column indices where the cell value
 		contains the substring 'Tag'. Stops at the first empty cell.
 
@@ -153,7 +139,6 @@ class OdsProcessor(BaseProcessor):
 		"""
 		Sorts tag values in worksheet rows in ascending order.
 
-		Calls the '_order_tags' from the XlsxProcessor instance. 
 		Iterates over rows in the worksheet starting from `self._START`, collects non-placeholder ('.')
 		tag values from columns specified in `self._get_tags()`, sorts them, and rewrites them across
 		the same columns. Stops when the first tag column in a row has no value.
@@ -164,6 +149,11 @@ class OdsProcessor(BaseProcessor):
 		Raises:
 			AttributeError: If `self._ws`, `self._START`, or `self._get_tags()` is not properly initialized.
 			TypeError: If tag column indices returned by `self._get_tags()` are not integers.
+
+		Notes:
+			- Relies on `self._ws` as the worksheet object and `self._START` as the starting row index.
+			- Uses `self._get_tags()` to retrieve the list of column indices for tag values.
+			- Placeholder values ('.') are ignored during sorting and not rewritten.
 		"""
 		return self.__xlsx_processor._order_tags()
 
@@ -172,7 +162,6 @@ class OdsProcessor(BaseProcessor):
 		"""
 		A context manager that handles loading and saving an ODS workbook.
 
-		Calls the '_workbook_manager' from the XlsxProcessor instance. 
 		Loads an ODS workbook from `self._FILE`, selects the worksheet specified by
 		`self._SHEETNAME`, and yields the workbook object (as a dict) for use within a `with` block.
 		Ensures the workbook is saved after execution, even if an error occurs, either to
@@ -187,5 +176,13 @@ class OdsProcessor(BaseProcessor):
 			FileNotFoundError: If the file specified by `self._FILE` does not exist.
 			KeyError: If `self._SHEETNAME` does not exist in the workbook.
 			Exception: For other unexpected errors during workbook loading or saving.
+
+		Notes:
+			- Relies on instance variables `self._FILE` (str), `self._SHEETNAME` (str),
+			`self._OUTPUT` (bool), and `self._CUSTOM_NAME` (str or None).
+			- Uses `self._utilities.generate_output_name` to create the output filename if
+			`self._OUTPUT` is True.
+			- The workbook is only saved if it was successfully loaded.
+			- With pyexcel_ods3, the workbook is a dict, and sheets are accessed as keys.
 		"""
 		return self.__xlsx_processor._workbook_manager()

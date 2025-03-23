@@ -49,7 +49,7 @@ class BaseProcessor(ABC):
 			Finds the column number for a given column name in the worksheet.
 
 		_get_links() -> dict
-			Extracts YouTube links from a worksheet and processes them to store video durations.
+			Extracts YouTube links from a worksheet and processes them to store video duration, its author and date of publication. 
 
 		_get_routines() -> dict
 			Fetches daily routines from a worksheet as a JSON-structured dictionary.
@@ -87,20 +87,20 @@ class BaseProcessor(ABC):
 		routines() -> dict:
 			Retrieves routines using a decorated workbook handler with output and error management.
 	"""
-	__slots__ = ("_AUTOSEARCH",
-				"_CHUNK",
-				"_COLORS",
-				"_CUSTOM_NAME",
-				"_END",
-				"_FILE",
-				"_OUTPUT",
-				"_OUTPUT_NAME",
-				"_SHEETNAME",
-				"_START",
-				"_utilities",
-				"_youtube_client",
-				"_YT_PREFIX",
-				"_API_KEY")
+	__slots__ = ("_API_KEY",
+				 "_AUTOSEARCH",
+				 "_CHUNK",
+				 "_COLORS",
+				 "_CUSTOM_NAME",
+				 "_END",
+				 "_FILE",
+				 "_OUTPUT",
+				 "_OUTPUT_NAME",
+				 "_SHEETNAME",
+				 "_START",
+				 "_utilities",
+				 "_youtube_client",
+				 "_YT_PREFIX")
 
 	def __init__(self, args: dict) -> None:
 		"""
@@ -218,7 +218,9 @@ class BaseProcessor(ABC):
 
 	@abstractmethod
 	def _get_links(self) -> Dict[str, Dict[str, Any]]:
-		"""Extracts and processes video links from a worksheet.
+		"""
+		Extracts YouTube links from a worksheet and processes them to store video duration, 
+		its author and date of publication.
 
 		This method should be implemented by subclasses to scan a worksheet,
 		extract YouTube links, and associate them with relevant attributes such as
