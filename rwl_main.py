@@ -267,8 +267,7 @@ class ReadWatchLog:
 					self.__utilities.logger.error(f"Invalid combination for --{self.__called_arg}. Cannot use with --start, --end, --chunk, or --auto.")
 					sys.exit(self.__error_msg)
 
-# def main(args: argparse.Namespace) -> None:
-def main(args: dict):
+def main(args: argparse.Namespace) -> None:
 	"""
 	Processes command-line arguments and executes the specified action.
 
@@ -283,7 +282,7 @@ def main(args: dict):
 		>>> main(args)  # Processes links from Vault.xlsx
 	"""
 	# Parse the arguments
-	# args = vars(args)
+	args = vars(args)
 
 	# Initialize the ReadWatchLog class with the arguments
 	rwl = ReadWatchLog(args=args)
@@ -293,29 +292,26 @@ def main(args: dict):
 
 if __name__ == '__main__':
 
-	# parser = argparse.ArgumentParser(description="Read-Watch-Log")
+	parser = argparse.ArgumentParser(description="Read-Watch-Log")
 
 	# Define the arguments
-	# parser.add_argument('--start', type=int, default=None, help='Start value')
-	# parser.add_argument('--end', type=int, default=None, help='End value')
-	# parser.add_argument('--output', action='store_true', help='Output flag. If true, output is created. Optional argument.')
-	# parser.add_argument('--file', type=str, required=True, default="Vault.xlsx", help='File name to process (XSLX/ODS formats). Required argument.')
-	# parser.add_argument('--custom_name', type=str, default=datetime.now().strftime("output_%d%m%Y%H%M%S%f"), help='Custom name of output file')
-	# parser.add_argument('--chunk', type=int, default=0, help='Chunk size. Algorithm processes only given number of records. Used with argument `links`.')
-	# parser.add_argument('--auto', action='store_true', help='Autosearch of a non-processed record. Used with argument `links`.')
-	# parser.add_argument('--sheet', type=str, required=True, default="Vault", help='Sheetname of the given document. Required argument.')
+	parser.add_argument('--start', type=int, default=None, help='Start value')
+	parser.add_argument('--end', type=int, default=None, help='End value')
+	parser.add_argument('--output', action='store_true', help='Output flag. If true, output is created. Optional argument.')
+	parser.add_argument('--file', type=str, required=True, default="Vault.xlsx", help='File name to process (XSLX/ODS formats). Required argument.')
+	parser.add_argument('--custom_name', type=str, default=datetime.now().strftime("output_%d%m%Y%H%M%S%f"), help='Custom name of output file')
+	parser.add_argument('--chunk', type=int, default=0, help='Chunk size. Algorithm processes only given number of records. Used with argument `links`.')
+	parser.add_argument('--auto', action='store_true', help='Autosearch of a non-processed record. Used with argument `links`.')
+	parser.add_argument('--sheet', type=str, required=True, default="Vault", help='Sheetname of the given document. Required argument.')
 
 	# Create a mutually exclusive group
-	# group = parser.add_mutually_exclusive_group()
+	group = parser.add_mutually_exclusive_group()
 
 	# Add mutually exclusive arguments
-	# group.add_argument('--links', action='store_true', help='Get links')
-	# group.add_argument('--routines', action='store_true', help='Get routines')
-	# group.add_argument('--tags', action='store_true', help='Order tags')
-	# group.add_argument('--json', action='store_true', help='Convert to JSON')
-	# group.add_argument('--duplicates', action='store_true', help='Detect duplicates')
+	group.add_argument('--links', action='store_true', help='Get links')
+	group.add_argument('--routines', action='store_true', help='Get routines')
+	group.add_argument('--tags', action='store_true', help='Order tags')
+	group.add_argument('--json', action='store_true', help='Convert to JSON')
+	group.add_argument('--duplicates', action='store_true', help='Detect duplicates')
 
-	args = {"custom_name": "works", "links": True, "start": 41688, "end": 42000, "output": True, "chunk": 0, "file": "Vault.ods", "sheet": "Vault"}
-
-	# main(args=parser.parse_args())
-	main(args=args)
+	main(args=parser.parse_args())
