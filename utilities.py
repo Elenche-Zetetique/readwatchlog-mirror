@@ -152,21 +152,18 @@ class Utilities:
 
 		Returns:
 			str: output file name in one of these formats:
-				- "{outputs_dir}/output_{custom_name}" if custom_name is provided
-				- "{outputs_dir}/output_{uuid_hex}" if unique_id is True
-				- "{outputs_dir}/output_{MMDDYYYY_HHMMSS_ffffff}" otherwise
+				- "{outputs_dir}/{custom_name}" if custom_name is provided
+				- "{outputs_dir}/{uuid_hex}" if unique_id is True
+				- "{outputs_dir}/{MMDDYYYY_HHMMSS_ffffff}" otherwise
 		"""
-		base = f"{self.__directories['outputs']}/output"
-		separator = "_"
-
 		if custom_name:
-			suffix = custom_name
+			filename = custom_name
 		elif unique_id:
-			suffix = uuid.uuid4().hex
+			filename = uuid.uuid4().hex
 		else:
-			suffix = datetime.now().strftime(self.__TIMESTAMP_FORMAT)
+			filename = datetime.now().strftime(self.__TIMESTAMP_FORMAT)
 
-		return f"{base}{separator}{suffix}"
+		return os.path.join(self.__directories['outputs'], filename)
 
 	def create_output(self, func: Callable[..., Any], *, create_output: bool = False, custom_name: str | None) -> Callable[..., Any]:
 		"""
@@ -201,7 +198,7 @@ class Utilities:
 
 			if create_output:
 				# Use pathlib for better file handling
-				from pathlib import Path
+				
 				filename = Path(f"{self.generate_output_name(custom_name)}.json")
 				self.logger.info(f"Saving output file: {filename}")
 				

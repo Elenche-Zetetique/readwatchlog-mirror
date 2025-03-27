@@ -1,16 +1,15 @@
 #!/usr/bin/python3
 
 from datetime import datetime
-from rwl_base import BaseProcessor
-from rwl_ods import OdsProcessor
-from rwl_xls import XlsProcessor
 from rwl_xlsx import XlsxProcessor
 from typing import Any, Dict, Optional
 import argparse
 import magic
 import os
+import shutil
 import subprocess
 import sys
+from utilities import Utilities
 
 class ReadWatchLog:
 	"""
@@ -24,18 +23,19 @@ class ReadWatchLog:
 		__processors (dict): Mapping of file extensions to processor classes (e.g., XlsxProcessor).
 		_args (dict): Input arguments including file path, sheet name, and processing options.
 		__processor (BaseProcessor): Instance of the selected processor class.
-		__directories (dict): Directory paths for input/output operations.
 	"""
 	__slots__ = ("_args",
+				 "__conversion",
 				 "__called_arg",
-				 "__directories",
 				 "__processor",
 				 "__processors",
+				 "__filetype",
 				 "__filetypes",
 				 "__utilities",
 				 "__temp_file",
 				 "__error_msg",
-				 "__file")
+				 "__file",
+				 "__preparation")
 
 	def __init__(self, args: dict):
 		"""
@@ -56,33 +56,23 @@ class ReadWatchLog:
 		Raises:
 			SystemExit: If file doesn’t exist or arguments are invalid.
 		"""
+		self.__filetype = None
 		self.__error_msg = "An error occured. For details see the error-log."
 		self.__filetypes: Dict[str, str] = {
 			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
 			'application/vnd.oasis.opendocument.spreadsheet': 'ods',
 			'application/vnd.ms-excel': 'xls'
 		}
-		self.__processors: Dict[str, Type[BaseProcessor]] = {
-			'xlsx': XlsxProcessor,
-			'ods': OdsProcessor,
-			'xls': XlsProcessor
-		}
-		self.__directories: Dict[str, str] = {'inputs': 'inputs'}
-		(os.makedirs(d, exist_ok=True) for d in self.__directories.values())
 		self._args: Dict[str, Any] = args
-		self._args['file'] = os.path.join(self.__directories['inputs'], self._args['file'])
 		self.__called_arg: Optional[str] = None
-		self.__check_args()
-		self.__processor: BaseProcessor = self.__select_processor()
-		self.__temp_file = os.path.splitext(self._args['file'])[0] + '_temp' + '.xlsx'
-		self.__file = {
-			'xlsx': self._args['file'],
-			'ods': self.__temp_file,
-			'xls': self.__temp_file
-		}
 		self.__utilities = Utilities()
 
-	def __prepare_file(self) -> None:
+	def __remove_temp(self):
+		shutil.rmtree(self._args['temp_dir'])
+		if not(self._args['main_extension'] in self._args['file']): 
+			os.remove(self._args['output_file'])
+
+	def __convert(self, convert_args : dict) -> None:
 		"""
 		Converts a given file to XLSX format using LibreOffice.
 
@@ -98,39 +88,42 @@ class ReadWatchLog:
 			"--headless", 
 			"--invisible", 
 			"--convert-to", 
-			"xlsx", 
-			self._args['file']
+			convert_args['to_extension'], 
+			convert_args['file'],
+			"--outdir",
+			convert_args['output_dir']
 		]
-		
+
+		name, extension = os.path.splitext(convert_args['file'])
+		new_file = ''.join([name, '.', convert_args['to_extension']])
 		try:
-			result = subprocess.run(command, check=True, capture_output=True, text=True, cwd="inputs")
-			self.__utilities.logger.info("Conversion successful:", result.stdout)
+			result = subprocess.run(command, check=True, capture_output=True, text=True)
+			self.__utilities.logger.info(f"Successful conversion of {convert_args['file']} into {new_file}")
 		except subprocess.CalledProcessError as e:
-			self.__utilities.logger.error("Conversion failed:", e.stderr)
+			self.__utilities.logger.error(f"Conversion failed: {e.stderr}")
 			sys.exit(self.__error_msg)
 
-	def __select_processor(self) -> BaseProcessor:
+		if not os.path.exists(new_file):
+			self.__utilities.logger.error(f"New file {new_file} does not exist")
+			sys.exit(self.__error_msg)
+
+		self._args['file'] = new_file
+
+	def __check_filetype(self) -> None:
 		"""
-		Selects the appropriate processor based on the file's MIME type.
+		Check the filetype based on the file's MIME type.
 
 		Determines the file type using MIME detection and initializes the corresponding processor.
-
-		Returns:
-			BaseProcessor: An instance of the selected processor.
 
 		Raises:
 			KeyError: If the file format is not recognized or unsupported.
 		"""
 		mime: magic.Magic = magic.Magic(mime=True)
 		fileformat: str = mime.from_file(self._args['file'])
-		filetype: Optional[str] = self.__filetypes.get(fileformat, None)
-		if filetype is None:
+		self.__filetype: Optional[str] = self.__filetypes.get(fileformat, None)
+		if self.__filetype is None:
 			self.__utilities.logger.error(f"No such format: {fileformat} (file: {self._args['file']})")
 			sys.exit(self.__error_msg)
-
-		self._args['file'] = self.__file[filetype]
-		self.__prepare_file()
-		return self.__processors[filetype](args=self._args)
 
 	@property
 	def links(self)-> Optional[Dict[str, Any]]:
@@ -181,16 +174,63 @@ class ReadWatchLog:
 		"""
 		return self.__processor.duplicates()
 
+	def __processing(self, stage : str):
+
+		match stage:
+
+			case "preprocessing":
+				self.__check_args()
+				self.__check_filetype()
+
+				convert_args = {
+					'file':			self._args['file'],
+					'to_extension':	self._args['main_extension'],
+					'output_dir':	self._args['temp_dir']
+				}
+				self.__convert(convert_args=convert_args)
+
+			case "postprocessing":
+
+				convert_args = {
+					'file':			self._args['output_file'],
+					'to_extension':	args['original_extension'],
+					'output_dir':	self._args['outputs_dir']
+				}
+				self.__convert(convert_args=convert_args)
+				self.__remove_temp()
+
 	def run(self) -> None:
 		"""
-		Executes the action specified in the arguments.
+		Executes the specified action by processing an input file.
 
-		Calls the property corresponding to the selected action (e.g., 'links', 'json').
+		This method follows a structured processing pipeline:
+		-	Preprocessing Stage: 
+				Validates the provided arguments and checks the file type.
+				If necessary, converts the input file to an intermediate format.
+		-	Action Execution: 
+				Calls the method corresponding to the selected action 
+				(e.g., 'links', 'json'), which processes the file.
+		-	Postprocessing Stage: 
+				Converts the processed file back to its original format 
+				and performs cleanup by removing temporary files.
+
+		The action to be executed is determined by `self.__called_arg`, which is dynamically
+		retrieved using `getattr(self, self.__called_arg, None)`.
 		"""
+		self.__processing('preprocessing')
+		self.__processor = XlsxProcessor(args=self._args)
 		getattr(self, self.__called_arg, None)
+		self.__processing('postprocessing')
 
 	def __check_args(self) -> None:
-		"""Validates input arguments and determines the action to perform.
+		"""
+		Validates input arguments and determines the action to perform.
+
+		This function:
+		- Ensures the specified file exists.
+		- Determines the action (`links`, `routines`, `tags`, `json`, `duplicates`) based on provided arguments.
+		- Validates argument dependencies and constraints for each action.
+		- Raises an error and exits if arguments are missing or invalid.
 
 		Raises:
 			SystemExit: If arguments are invalid or no action is specified.
@@ -266,23 +306,57 @@ class ReadWatchLog:
 				if any(range_flags):
 					self.__utilities.logger.error(f"Invalid combination for --{self.__called_arg}. Cannot use with --start, --end, --chunk, or --auto.")
 					sys.exit(self.__error_msg)
-
+				
 def main(args: argparse.Namespace) -> None:
 	"""
 	Processes command-line arguments and executes the specified action.
 
+	This function:
+	- Ensures necessary directories (`inputs`, `outputs`, `temp`) exist.
+	- Prepares file paths, handling input, temporary, and output file assignments.
+	- Initializes the `ReadWatchLog` class and executes the requested action.
+
 	Args:
-		args: Parsed command-line arguments from argparse.Namespace.
+		args (argparse.Namespace): Parsed command-line arguments.
 
 	Raises:
 		SystemExit: If no valid action is specified or arguments are invalid.
 
 	Examples:
-		>>> args = argparse.Namespace(links=True, file='Vault.xlsx', sheet='Sheet1', output=True)
+		>>> args = argparse.Namespace(links=True, file='Vault.xlsx', sheet='Vault', output=True)
 		>>> main(args)  # Processes links from Vault.xlsx
 	"""
 	# Parse the arguments
 	args = vars(args)
+
+	# Check existence of directories
+	directories = {key: key for key in ['inputs', 'outputs', 'temp']}
+	[os.makedirs(d, exist_ok=True) for d in directories.values()]
+
+	# Updating the 'args'
+	only_filename, original_extension = os.path.splitext(args['file'])
+	filename = args['file']
+	main_extension = 'xlsx'
+	output_file = os.path.join(directories['outputs'],
+		f"{args['custom_name']}.{main_extension}" if args.get('output') else f"{only_filename}.{main_extension}"
+	)
+	args.update({
+		'file':				  os.path.join(directories['inputs'], filename),
+		'filename':			  filename,
+		'inputs_dir':		  directories['inputs'],
+		'main_extension':	  main_extension,
+		'only_filename':	  only_filename,
+		'original_extension': original_extension[1:],
+		'output_file':		  output_file,
+		'outputs_dir':		  directories['outputs'],
+		'temp_dir':			  directories['temp'],
+		'temp_file':		  os.path.join(directories['temp'], filename)
+	})
+
+	shutil.copy2(args['file'], args['temp_file'])
+	args['temp_file'], args['file'] = args['file'], args['temp_file']
+
+	del only_filename, original_extension, filename, main_extension, output_file
 
 	# Initialize the ReadWatchLog class with the arguments
 	rwl = ReadWatchLog(args=args)
@@ -294,20 +368,20 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(description="Read-Watch-Log")
 
-	# Define the arguments
+	Define the arguments
 	parser.add_argument('--start', type=int, default=None, help='Start value')
 	parser.add_argument('--end', type=int, default=None, help='End value')
 	parser.add_argument('--output', action='store_true', help='Output flag. If true, output is created. Optional argument.')
 	parser.add_argument('--file', type=str, required=True, default="Vault.xlsx", help='File name to process (XSLX/ODS formats). Required argument.')
-	parser.add_argument('--custom_name', type=str, default=datetime.now().strftime("output_%d%m%Y%H%M%S%f"), help='Custom name of output file')
+	parser.add_argument('--custom_name', type=str, default=datetime.now().strftime("output_%d%m%Y%H%M%S%f"), help='Custom name of output file (without filetype)')
 	parser.add_argument('--chunk', type=int, default=0, help='Chunk size. Algorithm processes only given number of records. Used with argument `links`.')
 	parser.add_argument('--auto', action='store_true', help='Autosearch of a non-processed record. Used with argument `links`.')
 	parser.add_argument('--sheet', type=str, required=True, default="Vault", help='Sheetname of the given document. Required argument.')
 
-	# Create a mutually exclusive group
+	Create a mutually exclusive group
 	group = parser.add_mutually_exclusive_group()
 
-	# Add mutually exclusive arguments
+	Add mutually exclusive arguments
 	group.add_argument('--links', action='store_true', help='Get links')
 	group.add_argument('--routines', action='store_true', help='Get routines')
 	group.add_argument('--tags', action='store_true', help='Order tags')

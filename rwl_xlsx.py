@@ -416,7 +416,8 @@ class XlsxProcessor(BaseProcessor):
 		finally:
 			if wb is not None:  # Ensure wb exists before trying to save
 				if self._OUTPUT:
-					filename = f"{self._utilities.generate_output_name(self._CUSTOM_NAME)}.xlsx"
+					filename = f"{self._utilities.generate_output_name(custom_name=self._CUSTOM_NAME)}.xlsx"
 					wb.save(filename)
 				else:
-					wb.save(self._FILE)
+					filename = f"{self._utilities.generate_output_name(custom_name=self._ONLY_FILENAME)}.xlsx"
+					wb.save(filename)

@@ -14,9 +14,9 @@ load_dotenv()
 
 class BaseProcessor(ABC):
 	"""
-	A class to perform actions on a specially crafted XLSX/ODS file.
+	A class to perform actions on a specially crafted XLSX file.
 
-	This class provides functionality to interact with XLSX/ODS files, extract and process data,
+	This class provides functionality to interact with XLSX files, extract and process data,
 	and interact with the YouTube Data API to retrieve video details. It includes methods for
 	handling workbook operations, validating data, and managing outputs.
 
@@ -100,7 +100,8 @@ class BaseProcessor(ABC):
 				 "_START",
 				 "_utilities",
 				 "_youtube_client",
-				 "_YT_PREFIX")
+				 "_YT_PREFIX",
+				 "_ONLY_FILENAME")
 
 	def __init__(self, args: dict) -> None:
 		"""
@@ -141,6 +142,7 @@ class BaseProcessor(ABC):
 		self._utilities = Utilities()
 		self._youtube_client = self._build_youtube_client()
 		self._YT_PREFIX = 'https://youtu.be/'
+		self._ONLY_FILENAME = args.get('only_filename', None)
 
 	def _build_youtube_client(self) -> Resource:
 		"""
