@@ -1,6 +1,6 @@
-# Read-Watch-Log
+# ReadWatchLog
 ## Description
-Read-Watch-Log is a tool designed to process specially crafted XLSX/ODS files. It extracts and processes data from spreadsheets and interacts with the YouTube Data API to retrieve video details. The tool supports various operations, including extracting links, ordering tags, converting data to JSON, and detecting duplicates.
+ReadWatchLog is a tool designed to process specially crafted XLSX/ODS files. It extracts and processes data from spreadsheets and interacts with the YouTube Data API to retrieve video details. The tool supports various operations, including extracting links, ordering tags, converting data to JSON, and detecting duplicates.
 
 ## Features
 - Supports **XLSX** and **ODS** file formats.
@@ -53,6 +53,7 @@ Only one of the following options can be used at a time:
 - `--tags`: Order tags from the file.
 - `--json`: Convert data to JSON format.
 - `--duplicates`: Detect duplicate records.
+
 ## Classes Overview
 ### `BaseProcessor`
 Abstract class defining methods to interact with XLSX/ODS files, process data, and retrieve YouTube video details.
@@ -60,11 +61,11 @@ Abstract class defining methods to interact with XLSX/ODS files, process data, a
 ### `ReadWatchLog`
 Determines the file type, selects the corresponding processor, and delegates processing tasks.
 
-### `OdsProcessor`
-Handles ODS (OpenDocument Spreadsheet) files and extracts/processes data.
-
 ### `XlsxProcessor`
 Handles XLSX (Excel) files and extracts/processes data.
+
+### `Utilities`
+External class to represent extra functions, that can be used within other classes.
 
 ## Example Usage
 ```shell
