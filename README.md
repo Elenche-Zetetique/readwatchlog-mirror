@@ -69,10 +69,11 @@ External class to represent extra functions, that can be used within other class
 
 ## Example Usage
 ```shell
-python main.py --file Vault.xlsx --sheet Vault --links
+python main.py --file Vault.xlsx --sheet Vault --links --auto --chunk 1000
 ```
 
-This will process the `Vault.xlsx` file and extract links from the `Vault` sheet.
+This will process the `Vault.xlsx` file and updates Youtube-links in the `Vault` sheet,
+automatically starting from the first found non-processed Youtube-link and going through the next 1000 records in the document.
 
 ## License
 This project is licensed under the [**Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0)**](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en) license.
