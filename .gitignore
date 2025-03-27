@@ -1,5 +1,5 @@
 .env
-inputs/
+#inputs/
 logs/
 outputs/
 __pycache__/
